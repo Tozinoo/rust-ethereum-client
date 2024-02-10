@@ -1,6 +1,11 @@
 use std::io::{self, Write};
 use secp256k1::{Secp256k1};
 use keccak_hash::{keccak, H256};
+use rust_ethereum_client::constants::{PRIVATE_KEY_SIZE, PUBLIC_KEY_SIZE};
+
+//type
+type PrivateKey = [u8; PRIVATE_KEY_SIZE];
+type PublicKey = [u8; PUBLIC_KEY_SIZE];
 
 extern crate secp256k1;
 
@@ -10,7 +15,7 @@ extern crate secp256k1;
 
 /// pub struct SecretKey([u8; constants::SECRET_KEY_SIZE]);
 /// SECRET_KEY_SIZE: usize = 32;
-pub fn generate_key() -> ([u8; 32], [u8; 20]) {
+pub fn generate_key() -> (PrivateKey, PublicKey) {
     let secp = Secp256k1::new();
     let (secret_key, public_key) = secp.generate_keypair(&mut rand::thread_rng());
 
@@ -20,7 +25,13 @@ pub fn generate_key() -> ([u8; 32], [u8; 20]) {
     serialized_public_key_without_prefix.copy_from_slice(&serialized_public_key[1..65]);
     let public_key = keccak(serialized_public_key_without_prefix);
 
-    (secret_key.secret_bytes(), slice_public_key(public_key))
+    (secret_key.secret_bytes(), slice_last_20_bytes(public_key))
+}
+
+fn slice_last_20_bytes(public_key: H256) -> PublicKey {
+    let public_key_bytes = public_key.as_bytes();
+    let last_20_bytes: PublicKey = public_key_bytes[12..32].try_into().expect("Slice with incorrect length");
+    last_20_bytes
 }
 
     // 0x4b9cd2a93926df1a9d70682bf3da9e06c33ea1bb1e8929877600d790c8fed79c
@@ -47,42 +58,27 @@ pub fn generate_key() -> ([u8; 32], [u8; 20]) {
     // secret_key_to_hex_str(&secret_key_bytes_vec)
 
 
-pub fn input_password() {
-    print!("Please enter any key to generate a private key : "); //
-    io::stdout().flush().expect("Failed to flush stdout."); //
-
-    let mut password = String::new();
-
-    io::stdin()
-        .read_line(&mut password)
-        .expect("입력을 읽는 데 실패했습니다.");
-
-    println!("안녕하세요, {}!", password.trim());
-}
 
 
 
-pub fn secret_key_to_hex_str(secret_key_bytes: [u8; 32]) -> String {
-    let mut hex_secret_key = String::new();
-    for secret_key_byte in secret_key_bytes {
-        hex_secret_key.push_str(&format!("{:02x}",secret_key_byte));
-    }
-    format!("0x{}", hex_secret_key)
-}
 
-pub fn u8_to_hex_str(secret_key_bytes: [u8; 32]) -> String {
-    let mut hex_secret_key = String::new();
-    for secret_key_byte in secret_key_bytes {
-        hex_secret_key.push_str(&format!("{:02x}",secret_key_byte));
-    }
-    format!("0x{}", hex_secret_key)
-}
+// pub fn secret_key_to_hex_str(secret_key_bytes: [u8; 32]) -> String {
+//     let mut hex_secret_key = String::new();
+//     for secret_key_byte in secret_key_bytes {
+//         hex_secret_key.push_str(&format!("{:02x}",secret_key_byte));
+//     }
+//     format!("0x{}", hex_secret_key)
+// }
 
-fn slice_public_key(public_key: H256) -> [u8; 20] {
-    let public_key_bytes = public_key.as_bytes();
-    let last_20_bytes: [u8; 20] = public_key_bytes[12..32].try_into().expect("Slice with incorrect length");
-    last_20_bytes
-}
+// pub fn u8_to_hex_str(secret_key_bytes: [u8; 32]) -> String {
+//     let mut hex_secret_key = String::new();
+//     for secret_key_byte in secret_key_bytes {
+//         hex_secret_key.push_str(&format!("{:02x}",secret_key_byte));
+//     }
+//     format!("0x{}", hex_secret_key)
+// }
+//
+
 
 // 0xb3c0e684210b90cb834e7d93811e2cd993acc48cb9ff0d44a4a895b8325753b0
 // [179, 192, 230, 132, 33, 11, 144, 203, 131, 78, 125, 147, 129, 30, 44, 217, 147, 172, 196, 140, 185, 255, 13, 68, 164, 168, 149, 184, 50, 87, 83, 176]
@@ -103,3 +99,16 @@ fn slice_public_key(public_key: H256) -> [u8; 20] {
 //     let last_20_bytes = &a_bytes[12..];
 //     println!("공개 키 keccak: {:?}", last_20_bytes);
 // }
+
+pub fn input_password() {
+    print!("Please enter any key to generate a private key : "); //
+    io::stdout().flush().expect("Failed to flush stdout."); //
+
+    let mut password = String::new();
+
+    io::stdin()
+        .read_line(&mut password)
+        .expect("입력을 읽는 데 실패했습니다.");
+
+    println!("안녕하세요, {}!", password.trim());
+}
