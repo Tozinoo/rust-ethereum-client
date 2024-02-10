@@ -1,22 +1,55 @@
-use std::io::{self, Write}; // Write 트레잇을 사용하기 위해 추가합니다.
+use std::io::{self, Write};
+use secp256k1::{Secp256k1};
+use keccak_hash::{keccak, H256};
+
 extern crate secp256k1;
-use secp256k1::{Secp256k1, SecretKey};
 
-pub fn generate_key() {
+// pub fn generate_key() {
+//     // generate_private_key()
+// }
+
+/// pub struct SecretKey([u8; constants::SECRET_KEY_SIZE]);
+/// SECRET_KEY_SIZE: usize = 32;
+pub fn generate_key() -> ([u8; 32], [u8; 20]) {
     let secp = Secp256k1::new();
-
-    // 무작위 개인 키 생성
     let (secret_key, public_key) = secp.generate_keypair(&mut rand::thread_rng());
 
-    println!("개인 키: {:?}", secret_key);
-    println!("공개 키: {:?}", public_key);
+    // publc key
+    let serialized_public_key = public_key.serialize_uncompressed();
+    let mut serialized_public_key_without_prefix: [u8; 64] = [0; 64];
+    serialized_public_key_without_prefix.copy_from_slice(&serialized_public_key[1..65]);
+    let public_key = keccak(serialized_public_key_without_prefix);
 
+    (secret_key.secret_bytes(), slice_public_key(public_key))
 }
 
+    // 0x4b9cd2a93926df1a9d70682bf3da9e06c33ea1bb1e8929877600d790c8fed79c
+    // 0x230AbdD712caf39D71132a62c8FA85A50C16Fc53
+    // let pub_key: [u8;65] =  [4, 21, 167, 239, 137, 58, 100, 122, 131, 120, 195, 246, 39, 211, 211, 239, 58, 241, 225, 104, 205, 205, 162, 187, 208, 69, 231, 80, 7, 172, 238, 78, 219, 74, 0, 141, 92, 15, 146, 82, 82, 223, 52, 52, 5, 196, 187, 90, 159, 249, 155, 216, 212, 74, 245, 106, 205, 146, 226, 216, 73, 120, 248, 135, 82];
+    // println!("공개 키 원본: {:?}", pub_key);
+    // println!("공개 키 바이트화: {:?}", secret_key_to_hex_str(&pub_key));
+    // println!("공개 키 keccak: {:?}", secret_key_to_hex_str(&pub_key));
+    // assert!(slice_public_key()=="0x230AbdD712caf39D71132a62c8FA85A50C16Fc53", "public key가 안맞누");
+    // let secret_key_bytes_vec = secret_key.secret_bytes();
 
-pub fn input_key() {
+    // let mut public_key_bytes = public_key.serialize_uncompressed();
+
+    // println!("공개 키1: {:?}", public_key_bytes);
+    // let public_key = keccak256(&mut public_key_bytes);
+    // println!("공개 키2: {:?}", public_key_bytes);
+    // // let pubkey = keccak256(&mut public_key_bytes);
+    // // secret_key_bytes_vec
+    // println!("개인 키1: {:?}", secret_key);
+    // println!("개인 키2: {:?}", secret_key_bytes_vec);
+    // println!("개인 키3: {:?}", secret_key_to_hex_str(&secret_key_bytes_vec));
+    // println!("공개 키3: {:?}", slice_public_key(&public_key_bytes));
+    // println!("공개 키4: {:?}", secret_key_to_hex_str(&public_key_bytes));
+    // secret_key_to_hex_str(&secret_key_bytes_vec)
+
+
+pub fn input_password() {
     print!("Please enter any key to generate a private key : "); //
-    io::stdout().flush().expect("Failed to flush stdout."); // 출력 버퍼를 비워서 메시지가 즉시 표시되도록 합니다.
+    io::stdout().flush().expect("Failed to flush stdout."); //
 
     let mut password = String::new();
 
@@ -27,3 +60,46 @@ pub fn input_key() {
     println!("안녕하세요, {}!", password.trim());
 }
 
+
+
+pub fn secret_key_to_hex_str(secret_key_bytes: [u8; 32]) -> String {
+    let mut hex_secret_key = String::new();
+    for secret_key_byte in secret_key_bytes {
+        hex_secret_key.push_str(&format!("{:02x}",secret_key_byte));
+    }
+    format!("0x{}", hex_secret_key)
+}
+
+pub fn u8_to_hex_str(secret_key_bytes: [u8; 32]) -> String {
+    let mut hex_secret_key = String::new();
+    for secret_key_byte in secret_key_bytes {
+        hex_secret_key.push_str(&format!("{:02x}",secret_key_byte));
+    }
+    format!("0x{}", hex_secret_key)
+}
+
+fn slice_public_key(public_key: H256) -> [u8; 20] {
+    let public_key_bytes = public_key.as_bytes();
+    let last_20_bytes: [u8; 20] = public_key_bytes[12..32].try_into().expect("Slice with incorrect length");
+    last_20_bytes
+}
+
+// 0xb3c0e684210b90cb834e7d93811e2cd993acc48cb9ff0d44a4a895b8325753b0
+// [179, 192, 230, 132, 33, 11, 144, 203, 131, 78, 125, 147, 129, 30, 44, 217, 147, 172, 196, 140, 185, 255, 13, 68, 164, 168, 149, 184, 50, 87, 83, 176]
+//  [167, 95, 188, 228, 230, 190, 252, 52, 202, 242, 29, 137, 217, 126, 132, 37, 23, 153, 155, 170, 23, 100, 129, 244, 211, 53, 152, 219, 241, 73, 3, 16, 33, 35, 8, 220, 184, 105, 142, 65, 220, 161, 43, 20, 139, 99, 76, 23
+// 7, 251, 115, 91, 3, 131, 5, 99, 138, 214, 100, 112, 185, 230, 209, 229, 90, 237]
+
+// fn generate_public_key() {
+//     let pub_key: [u8;65] =  [4, 21, 167, 239, 137, 58, 100, 122, 131, 120, 195, 246, 39, 211, 211, 239, 58, 241, 225, 104, 205, 205, 162, 187, 208, 69, 231, 80, 7, 172, 238, 78, 219, 74, 0, 141, 92, 15, 146, 82, 82, 223, 52, 52, 5, 196, 187, 90, 159, 249, 155, 216, 212, 74, 245, 106, 205, 146, 226, 216, 73, 120, 248, 135, 82];
+//     let mut pub_key_without_first_byte: Vec<u8> = pub_key[1..].to_vec();
+//     println!("공개 키 원본: {:?}", pub_key);
+//     println!("공개 키 바이트화: {:?}", secret_key_to_hex_str(&pub_key));
+//     let mut pub_key_bytes = pub_key_without_first_byte.as_mut_slice();
+//     let pub_key_without_first_byte = &pub_key[1..];
+//     let a = keccak(&pub_key_without_first_byte);
+//     let pubkey_hash = keccak256(pub_key_bytes);
+//     let a_bytes = a.as_bytes();
+//
+//     let last_20_bytes = &a_bytes[12..];
+//     println!("공개 키 keccak: {:?}", last_20_bytes);
+// }
