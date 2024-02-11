@@ -1,7 +1,25 @@
 use std::io::{self, Write};
+use std::fs::File;
+use chrono::Utc;
+use hex::encode;
+
 use secp256k1::{Secp256k1};
-use keccak_hash::{keccak, H256};
-use rust_ethereum_client::constants::{PRIVATE_KEY_SIZE, PUBLIC_KEY_SIZE};
+use keccak_hash::{H256, keccak};
+// use crate::constants::{PRIVATE_KEY_SIZE, PUBLIC_KEY_SIZE};
+use serde::{Serialize, Deserialize};
+use serde_json;
+
+#[derive(Serialize, Deserialize)]
+struct Keystore {
+    private_key: String,
+    public_key: String,
+    address: String,
+}
+
+pub const PRIVATE_KEY_SIZE: usize = 32;
+/// The size (in bytes) of a public key.
+pub const PUBLIC_KEY_SIZE: usize = 20;
+
 
 //type
 type PrivateKey = [u8; PRIVATE_KEY_SIZE];
@@ -33,6 +51,40 @@ fn slice_last_20_bytes(public_key: H256) -> PublicKey {
     let last_20_bytes: PublicKey = public_key_bytes[12..32].try_into().expect("Slice with incorrect length");
     last_20_bytes
 }
+
+pub fn save_keystore(private_key: PrivateKey, address: PublicKey) -> std::io::Result<()> {
+    let keystore = Keystore {
+        private_key: hex::encode(private_key),
+        public_key: hex::encode(address),
+        address: format!("0x{}", hex::encode(address)),
+    };
+
+    let keystore_json = serde_json::to_string_pretty(&keystore)?;
+    println!("{}",keystore_json);
+    let mut file = File::create("./keystore/keystore.json")?;
+    file.write_all(keystore_json.as_bytes())?;
+
+    Ok(())
+}
+
+
+
+pub fn make_file(public_key: PublicKey) -> std::io::Result<()> {
+    // 현재 UTC 시간을 가져옵니다.
+    let now = Utc::now();
+    // 파일명을 위해 시간을 포맷합니다. 예: "2023-01-30T15-00-00Z"
+    let file_name = now.format("%Y-%m-%dT%H-%M-%SZ").to_string();
+
+    // 파일을 생성합니다. 여기서는 파일명에 UTC 시간을 사용합니다.
+    let mut file = File::create(file_name + "-" + hex::encode(public_key).as_str()+ ".txt")?;
+
+    // 파일에 내용을 씁니다. 실제 사용 시 필요한 내용으로 대체하세요.
+    file.write_all(b"Hello, world!")?;
+
+    Ok(())
+}
+
+
 
     // 0x4b9cd2a93926df1a9d70682bf3da9e06c33ea1bb1e8929877600d790c8fed79c
     // 0x230AbdD712caf39D71132a62c8FA85A50C16Fc53
