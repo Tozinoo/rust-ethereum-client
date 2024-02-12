@@ -3,18 +3,27 @@ use scrypt::{
     password_hash::{PasswordHasher, SaltString},
     Scrypt,
 };
+
 use aes::Aes128;
-use ctr::cipher::{ StreamCipher, generic_array::GenericArray};
-use hex::encode;
+use aes::cipher::{
+    BlockCipher, BlockEncrypt, BlockDecrypt, KeyInit,
+    generic_array::GenericArray,
+};
+use secp256k1::SecretKey;
+use crate::constants::PRIVATE_KEY_SIZE;
+
+type Aes128Ctr64LE = ctr::Ctr64LE<aes::Aes128>;
 
 
 use crate::types::types::{PrivateKey};
 
 pub fn encrypt_key(private_key: PrivateKey, password: String) {
+    // let a = scrypt_password();
 
 }
 
-pub fn scrypt_password() -> Result<(), Box<dyn std::error::Error>> {
+pub fn scrypt_password(private_key:PrivateKey) -> Result<(), Box<dyn std::error::Error>> {
+    aes_key(private_key);
     let password = input_password();
     let salt = SaltString::generate(&mut rand::thread_rng());
     let password_hash = Scrypt.hash_password(password.as_bytes(), &salt)?;
@@ -22,6 +31,68 @@ pub fn scrypt_password() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
+
+fn input_password() -> String {
+    print!("Please enter any key to generate a private key : "); //
+    io::stdout().flush().expect("Failed to flush stdout."); //
+
+    let mut password = String::new();
+
+    io::stdin()
+        .read_line(&mut password)
+        .expect("Failed to read input....");
+
+    password.trim().to_string()
+}
+
+fn aes_key(private_key: PrivateKey) {
+    let vec_private_key = private_key;
+
+    let mut block = GenericArray::from([42u8; 16]);
+
+// Initialize cipher
+    let cipher = Aes128::new_from_slice(&private_key[..16]);
+    println!("{:?}",cipher);
+    let block_copy = block.clone();
+
+// Encrypt block in-place
+    match  cipher {
+        Ok(cipher) => {
+            cipher.encrypt_block(&mut block);
+            cipher.decrypt_block(&mut block);
+            assert_eq!(block, block_copy);
+        }
+        Err(e) =>{
+            println!("암호화 키 초기화 중 오류 발생: {:?}", e);
+        }
+    }
+
+
+// And decrypt it back
+
+
+
+// Implementation supports parallel block processing. Number of blocks
+// processed in parallel depends in general on hardware capabilities.
+// This is achieved by instruction-level parallelism (ILP) on a single
+// CPU core, which is differen from multi-threaded parallelism.
+//     let mut blocks = [block; 100];
+    // cipher.encrypt_blocks(&mut blocks);
+
+    // for block in blocks.iter_mut() {
+        // cipher.decrypt_block(block);
+        // assert_eq!(block, &block_copy);
+    // }
+
+// `decrypt_blocks` also supports parallel block processing.
+//     cipher.decrypt_blocks(&mut blocks);
+
+    // for block in blocks.iter_mut() {
+        // cipher.encrypt_block(block);
+        // assert_eq!(block, &block_copy);
+    // }
+}
+
 
 // fn encrypt_data_aes_ctr(data: &[u8], key: &[u8], iv: &[u8]) -> Vec<u8> {
 //     let key = GenericArray::from_slice(key);
@@ -39,18 +110,7 @@ pub fn scrypt_password() -> Result<(), Box<dyn std::error::Error>> {
 // }
 
 
-fn input_password() -> String {
-    print!("Please enter any key to generate a private key : "); //
-    io::stdout().flush().expect("Failed to flush stdout."); //
 
-    let mut password = String::new();
-
-    io::stdin()
-        .read_line(&mut password)
-        .expect("Failed to read input....");
-
-    password
-}
 
 
 // pub fn encrypt_key<P, R, B, S>(

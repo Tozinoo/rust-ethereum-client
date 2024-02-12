@@ -1,4 +1,4 @@
-use std::io::{self, Write};
+use std::io::{Write};
 use std::fs::File;
 use serde::{Serialize, Deserialize};
 use serde_json;
@@ -10,7 +10,7 @@ use crate::accounts::keystore::encrypt_private_key::scrypt_password;
 
 pub fn generate_keystore(private_key: PrivateKey, public_key: PublicKey ,password: String) -> std::io::Result<()> {
     let signed_key:String = sign_private_key(private_key);
-    scrypt_password();
+    scrypt_password(private_key);
     make_file(signed_key, public_key);
     Ok(())
 }
