@@ -1,18 +1,19 @@
-use crate::accounts::keystore::keystore::{generate_key, make_file};
+use crate::accounts::generate_key::generate_key;
 use hex::encode;
+use crate::accounts::keystore::keystores::generate_keystore;
 
-mod accounts; // account 모듈을 선언합니다.
-
+mod accounts;
+mod types;
+mod constants;
 
 fn main() {
     // accounts::keystore::keystore::input_password();
     let (secret, public) = generate_key();
-    let SecretKey = encode(secret);
-    let PublicKey = encode(public);
-    println!("0x{:?}",SecretKey);
-    println!("0x{:?}",PublicKey);
-    make_file(public);
-
+    let a = encode(secret);
+    let b = encode(public);
+    generate_keystore(secret,public,String::from("asdf"));
+    println!("0x{:?}",a);
+    println!("0x{:?}",b);
 }
 
 // func GenerateKey(c elliptic.Curve, rand io.Reader) (*PrivateKey, error) {
