@@ -3,32 +3,32 @@ Scrypt와 Aes를 활용하여 Private Key 관리
 
 - 예제
 
-
-    {
-        "version": 3,
-        "id": "4c07993f-ded2-405a-b83d-3b627eebe5cd",
-        "address": "e449efddf8c9b174bbd40a0e0e1902d6eee72068",
-        "Crypto": {
-            "cipher": "aes-128-ctr",
-            "cipherparams": {
-              "iv": "7d416faf14c88bb124486f6cd851fa88"
-            },
-            "ciphertext":"e99f6d0e37f33124ee3020fad01363d9d7500efce
-                          913aede8a8119229b7a5f2e",
-            "kdf": "scrypt",
-            "kdfparams": {
-                "dklen": 32,
-                "salt": "c47f395c9031233453168f01b5a9999a06ec97c829
-                         a395ecd16e1ad37102ec7f",
-                "n": 8192,
-                "r": 8,
-                "p": 1
-            },
-            "mac": "82078437ee94331c69125eef4001ff4b78b481e909a6
-                    2a9ac25aa916237b70be"
-        }
+```
+{
+    "version": 3,
+    "id": "4c07993f-ded2-405a-b83d-3b627eebe5cd",
+    "address": "e449efddf8c9b174bbd40a0e0e1902d6eee72068",
+    "Crypto": {
+        "cipher": "aes-128-ctr",
+        "cipherparams": {
+          "iv": "7d416faf14c88bb124486f6cd851fa88"
+        },
+        "ciphertext":"e99f6d0e37f33124ee3020fad01363d9d7500efce
+                      913aede8a8119229b7a5f2e",
+        "kdf": "scrypt",
+        "kdfparams": {
+            "dklen": 32,
+            "salt": "c47f395c9031233453168f01b5a9999a06ec97c829
+                     a395ecd16e1ad37102ec7f",
+            "n": 8192,
+            "r": 8,
+            "p": 1
+        },
+        "mac": "82078437ee94331c69125eef4001ff4b78b481e909a6
+                2a9ac25aa916237b70be"
     }
-
+}
+```
 
 ## 각 요소 설명
 - version : 키스토어 파일 포맷 버전. 현재 3
