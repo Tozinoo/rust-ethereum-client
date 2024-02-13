@@ -1,16 +1,14 @@
 use std::io::{self, Write};
-use scrypt::{
-    password_hash::{PasswordHasher, SaltString},
-    Scrypt,
-};
+use scrypt::{scrypt, Params, password_hash::{PasswordHasher, SaltString}};
 
 use aes::Aes128;
 use aes::cipher::{
     BlockCipher, BlockEncrypt, BlockDecrypt, KeyInit,
     generic_array::GenericArray,
 };
+use rand::{RngCore, thread_rng};
 use secp256k1::SecretKey;
-use crate::constants::PRIVATE_KEY_SIZE;
+use crate::constants::{DEFAULT_KEYSTORE_DKLEN, DEFAULT_KEYSTORE_N, DEFAULT_KEYSTORE_P, DEFAULT_KEYSTORE_R};
 
 type Aes128Ctr64LE = ctr::Ctr64LE<aes::Aes128>;
 
@@ -23,11 +21,17 @@ pub fn encrypt_key(private_key: PrivateKey, password: String) {
 }
 
 pub fn scrypt_password(private_key:PrivateKey) -> Result<(), Box<dyn std::error::Error>> {
-    aes_key(private_key);
     let password = input_password();
-    let salt = SaltString::generate(&mut rand::thread_rng());
-    let password_hash = Scrypt.hash_password(password.as_bytes(), &salt)?;
-    println!("Hashed password: {:?}", password_hash);
+
+    let mut key = vec![0u8; DEFAULT_KEYSTORE_DKLEN as usize];
+
+    let mut salt = [0u8; 32];
+    thread_rng().fill_bytes(&mut salt);
+
+    let scrypt_params = Params::new(DEFAULT_KEYSTORE_N,DEFAULT_KEYSTORE_P,DEFAULT_KEYSTORE_R, DEFAULT_KEYSTORE_DKLEN)?;
+    scrypt(password.as_ref(), &salt, &scrypt_params, key.as_mut_slice())?;
+
+    println!("Hashed password: {:?}",key);
 
     Ok(())
 }
