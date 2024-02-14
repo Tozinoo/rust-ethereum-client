@@ -7,13 +7,7 @@ mod types;
 mod constants;
 
 fn main() {
-    // accounts::keystore::keystore::input_password();
-    let (secret, public) = generate_key();
-    let a = encode(secret);
-    let b = encode(public);
-    generate_keystore(secret,public,String::from("asdf"));
-    println!("0x{:?}",a);
-    println!("0x{:?}",b);
+    generate_keystore();
 }
 
 // func GenerateKey(c elliptic.Curve, rand io.Reader) (*PrivateKey, error) {

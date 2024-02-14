@@ -1,4 +1,4 @@
-use std::io::{self, Write};
+use std::io::{self, Read, Write};
 use scrypt::{scrypt, Params, password_hash::{PasswordHasher, SaltString}};
 
 use aes::Aes128;
@@ -6,24 +6,47 @@ use aes::cipher::{
     BlockCipher, BlockEncrypt, BlockDecrypt, KeyInit,
     generic_array::GenericArray,
 };
+use hex::encode;
+use cipher::{InnerIvInit, InvalidLength, StreamCipherCore};
 use rand::{RngCore, thread_rng};
 use secp256k1::SecretKey;
+use serde::{Deserialize, Serialize};
+use uuid::uuid;
 use crate::constants::{DEFAULT_KEYSTORE_DKLEN, DEFAULT_KEYSTORE_N, DEFAULT_KEYSTORE_P, DEFAULT_KEYSTORE_R};
+use crate::accounts::generate_key::generate_key;
 
-type Aes128Ctr64LE = ctr::Ctr64LE<aes::Aes128>;
-
-
-use crate::types::types::{PrivateKey};
-
-pub fn encrypt_key(private_key: PrivateKey, password: String) {
-    // let a = scrypt_password();
-
+#[derive(Debug)]
+struct Aes128Ctr {
+    inner: ctr::CtrCore<Aes128, ctr::flavors::Ctr128BE>,
 }
 
-pub fn scrypt_password(private_key:PrivateKey) -> Result<(), Box<dyn std::error::Error>> {
+impl Aes128Ctr {
+    fn new(key: &[u8], iv: &[u8]) -> Result<Self, cipher::InvalidLength> {
+        let cipher = aes::Aes128::new_from_slice(key).unwrap();
+        let inner = ctr::CtrCore::inner_iv_slice_init(cipher, iv).unwrap();
+        Ok(Self { inner })
+    }
+
+    fn apply_keystream(self, buf: &mut [u8]) {
+        self.inner.apply_keystream_partial(buf.into());
+    }
+}
+
+
+use crate::types::types::{PrivateKey, PublicKey};
+
+pub fn encrypt_key() -> Result<(String, String, String, String), Box<dyn std::error::Error>>  {
+    let (scrypt_key, salt) = scrypt_password()?;
+    let (private_key, public_key) = generate_key();
+
+    let (iv,ciphertext) =  aes_key(private_key, scrypt_key)?;
+    Ok((encode(iv), encode(ciphertext), encode(salt), encode(public_key)))
+}
+
+fn scrypt_password() -> Result<(Vec<u8>, [u8; 32]), Box<dyn std::error::Error>> {
     let password = input_password();
 
-    let mut key = vec![0u8; DEFAULT_KEYSTORE_DKLEN as usize];
+    let mut key = vec![0u8; DEFAULT_KEYSTORE_DKLEN];
 
     let mut salt = [0u8; 32];
     thread_rng().fill_bytes(&mut salt);
@@ -31,9 +54,7 @@ pub fn scrypt_password(private_key:PrivateKey) -> Result<(), Box<dyn std::error:
     let scrypt_params = Params::new(DEFAULT_KEYSTORE_N,DEFAULT_KEYSTORE_P,DEFAULT_KEYSTORE_R, DEFAULT_KEYSTORE_DKLEN)?;
     scrypt(password.as_ref(), &salt, &scrypt_params, key.as_mut_slice())?;
 
-    println!("Hashed password: {:?}",key);
-
-    Ok(())
+    Ok((key, salt))
 }
 
 fn input_password() -> String {
@@ -49,28 +70,45 @@ fn input_password() -> String {
     password.trim().to_string()
 }
 
-fn aes_key(private_key: PrivateKey) {
-    let vec_private_key = private_key;
+fn aes_key(private_key: PrivateKey, scrypt_key: Vec<u8>)-> Result<(Vec<u8>,Vec<u8>), Box<dyn std::error::Error>> {
+    let mut iv = vec![0u8; 16];
+    thread_rng().fill_bytes(iv.as_mut_slice());
 
-    let mut block = GenericArray::from([42u8; 16]);
+    let encryptor = Aes128Ctr::new(&private_key[..16], &iv);
 
-// Initialize cipher
-    let cipher = Aes128::new_from_slice(&private_key[..16]);
-    println!("{:?}",cipher);
-    let block_copy = block.clone();
+    match encryptor {
+        Ok(encryptor) => {
+            let mut ciphertext = private_key.as_ref().to_vec();
+            encryptor.apply_keystream(&mut ciphertext);
 
-// Encrypt block in-place
-    match  cipher {
-        Ok(cipher) => {
-            cipher.encrypt_block(&mut block);
-            cipher.decrypt_block(&mut block);
-            assert_eq!(block, block_copy);
+            Ok((iv,ciphertext))
         }
-        Err(e) =>{
-            println!("암호화 키 초기화 중 오류 발생: {:?}", e);
+        Err(e) => {
+            Err(Box::<dyn std::error::Error>::from("InvalidLength"))
         }
+        // }
     }
+}
 
+
+
+
+//     // Initialize cipher
+//     let cipher = Aes128::new_from_slice(&private_key[..16]);
+//     println!("{:?}", cipher);
+//     let block_copy = block.clone();
+//
+// // Encrypt block in-place
+//     match cipher {
+//         Ok(cipher) => {
+//             cipher.encrypt_block(&mut block);
+//             cipher.decrypt_block(&mut block);
+//             assert_eq!(block, block_copy);
+//         }
+//         Err(e) => {
+//             println!("암호화 키 초기화 중 오류 발생: {:?}", e);
+//         }
+//     }
 
 // And decrypt it back
 
@@ -95,7 +133,7 @@ fn aes_key(private_key: PrivateKey) {
         // cipher.encrypt_block(block);
         // assert_eq!(block, &block_copy);
     // }
-}
+// }
 
 
 // fn encrypt_data_aes_ctr(data: &[u8], key: &[u8], iv: &[u8]) -> Vec<u8> {

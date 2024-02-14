@@ -12,4 +12,3 @@ pub const DEFAULT_KEYSTORE_N: u8 = 13;
 pub const DEFAULT_KEYSTORE_R: u32 = 8;
 pub const DEFAULT_KEYSTORE_P: u32 = 1;
 
-
