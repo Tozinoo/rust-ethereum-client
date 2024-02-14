@@ -6,7 +6,7 @@ use chrono::Utc;
 use uuid::Uuid;
 
 use crate::accounts::keystore::encrypt_private_key::encrypt_key;
-use crate::constants::{DEFAULT_KEYSTORE_CIPHER, DEFAULT_KEYSTORE_DKLEN, DEFAULT_KEYSTORE_KDF, DEFAULT_KEYSTORE_N, DEFAULT_KEYSTORE_P, DEFAULT_KEYSTORE_R};
+use crate::constants::{DEFAULT_KEYSTORE_VERSION, DEFAULT_KEYSTORE_CIPHER, DEFAULT_KEYSTORE_DKLEN, DEFAULT_KEYSTORE_KDF, DEFAULT_KEYSTORE_N, DEFAULT_KEYSTORE_P, DEFAULT_KEYSTORE_R};
 
 pub fn generate_keystore() -> Result<(), Box<dyn std::error::Error>> {
     let (iv, ciphertext, salt, public_key, mac) = encrypt_key()?;
@@ -14,10 +14,10 @@ pub fn generate_keystore() -> Result<(), Box<dyn std::error::Error>> {
     let uuid_id = uuid::Uuid::new_v4();
 
     let keystore = Keystore {
-        version: 3,
+        version: DEFAULT_KEYSTORE_VERSION,
         id: uuid_id,
         address: public_key,
-        Crypto: Crypto {
+        crypto: Crypto {
             cipher: DEFAULT_KEYSTORE_CIPHER.to_string(),
             cipherparams: Cipherparams {
                 iv,
@@ -31,10 +31,10 @@ pub fn generate_keystore() -> Result<(), Box<dyn std::error::Error>> {
                 r: DEFAULT_KEYSTORE_R,
                 salt
             },
-            mac,
+            mac: mac
         },
     };
-    make_file(keystore);
+    let _ = make_file(keystore);
     Ok(())
 }
 
@@ -42,7 +42,7 @@ pub fn generate_keystore() -> Result<(), Box<dyn std::error::Error>> {
 
 fn make_file(keystore: Keystore) -> std::io::Result<()> {
     let now = Utc::now();
-    let file_name = format!("UTC--{}--{}.txt", now.format("%Y-%m-%dT%H-%M-%S.%fZ"), keystore.address);
+    let file_name = format!("keystore/UTC--{}--{}.txt", now.format("%Y-%m-%dT%H-%M-%S.%fZ"), keystore.address);
     let mut file = File::create(file_name)?;
 
     let serialized = serde_json::to_string_pretty(&keystore).expect("JSON 직렬화 실패");
@@ -57,7 +57,7 @@ struct Keystore {
     version : u8,
     id : Uuid,
     address: String,
-    Crypto: Crypto
+    crypto: Crypto
 }
 
 #[derive(Serialize, Deserialize)]
