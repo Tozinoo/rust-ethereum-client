@@ -1,22 +1,18 @@
-use std::io::{self, Read, Write};
-use scrypt::{scrypt, Params, password_hash::{PasswordHasher, SaltString}};
-
+use std::io::{self, Write};
+use scrypt::{scrypt, Params};
+use crate::types::types::{PrivateKey};
 
 use aes::Aes128;
 use aes::cipher::{
-    BlockCipher, BlockEncrypt, BlockDecrypt, KeyInit,
-    generic_array::GenericArray,
+    KeyInit,
+
 };
 use hex::encode;
-use cipher::{InnerIvInit, InvalidLength, StreamCipherCore};
-use keccak_hash::keccak256;
+use cipher::{InnerIvInit, StreamCipherCore};
 use rand::{RngCore, thread_rng};
-use secp256k1::SecretKey;
-use serde::{Deserialize, Serialize};
-use uuid::uuid;
 use crate::constants::{DEFAULT_KEYSTORE_DKLEN, DEFAULT_KEYSTORE_N, DEFAULT_KEYSTORE_P, DEFAULT_KEYSTORE_R};
 use crate::accounts::generate_key::generate_key;
-use keccak_hash::{H256, keccak};
+use keccak_hash::{ keccak};
 
 #[derive(Debug)]
 struct Aes128Ctr {
@@ -36,7 +32,6 @@ impl Aes128Ctr {
 }
 
 
-use crate::types::types::{PrivateKey, PublicKey};
 
 pub fn encrypt_key() -> Result<(String, String, String, String, String), Box<dyn std::error::Error>>  {
     let (scrypt_key, salt) = scrypt_password()?;
@@ -84,7 +79,7 @@ fn aes_key(private_key: PrivateKey, scrypt_key: Vec<u8>)-> Result<(Vec<u8>,Vec<u
     let mut iv = vec![0u8; 16];
     thread_rng().fill_bytes(iv.as_mut_slice());
 
-    let encryptor = Aes128Ctr::new(&private_key[..16], &iv);
+    let encryptor = Aes128Ctr::new(&scrypt_key[..16], &iv);
 
     match encryptor {
         Ok(encryptor) => {
@@ -93,7 +88,7 @@ fn aes_key(private_key: PrivateKey, scrypt_key: Vec<u8>)-> Result<(Vec<u8>,Vec<u
 
             Ok((iv,ciphertext))
         }
-        Err(e) => {
+        Err(_e) => {
             Err(Box::<dyn std::error::Error>::from("InvalidLength"))
         }
         // }

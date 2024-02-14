@@ -5,7 +5,6 @@ use serde_json;
 use chrono::Utc;
 use uuid::Uuid;
 
-use crate::types::types::{PrivateKey, PublicKey};
 use crate::accounts::keystore::encrypt_private_key::encrypt_key;
 use crate::constants::{DEFAULT_KEYSTORE_CIPHER, DEFAULT_KEYSTORE_DKLEN, DEFAULT_KEYSTORE_KDF, DEFAULT_KEYSTORE_N, DEFAULT_KEYSTORE_P, DEFAULT_KEYSTORE_R};
 
