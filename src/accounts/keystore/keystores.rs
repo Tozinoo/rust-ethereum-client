@@ -10,7 +10,7 @@ use crate::accounts::keystore::encrypt_private_key::encrypt_key;
 use crate::constants::{DEFAULT_KEYSTORE_CIPHER, DEFAULT_KEYSTORE_DKLEN, DEFAULT_KEYSTORE_KDF, DEFAULT_KEYSTORE_N, DEFAULT_KEYSTORE_P, DEFAULT_KEYSTORE_R};
 
 pub fn generate_keystore() -> Result<(), Box<dyn std::error::Error>> {
-    let (iv, ciphertext, salt, public_key) = encrypt_key()?;
+    let (iv, ciphertext, salt, public_key, mac) = encrypt_key()?;
 
     let uuid_id = uuid::Uuid::new_v4();
 
@@ -32,7 +32,7 @@ pub fn generate_keystore() -> Result<(), Box<dyn std::error::Error>> {
                 r: DEFAULT_KEYSTORE_R,
                 salt
             },
-            mac: String::from("asdf"),
+            mac,
         },
     };
     make_file(keystore);

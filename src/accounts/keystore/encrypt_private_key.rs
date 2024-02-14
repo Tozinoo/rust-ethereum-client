@@ -1,6 +1,7 @@
 use std::io::{self, Read, Write};
 use scrypt::{scrypt, Params, password_hash::{PasswordHasher, SaltString}};
 
+
 use aes::Aes128;
 use aes::cipher::{
     BlockCipher, BlockEncrypt, BlockDecrypt, KeyInit,
@@ -8,12 +9,14 @@ use aes::cipher::{
 };
 use hex::encode;
 use cipher::{InnerIvInit, InvalidLength, StreamCipherCore};
+use keccak_hash::keccak256;
 use rand::{RngCore, thread_rng};
 use secp256k1::SecretKey;
 use serde::{Deserialize, Serialize};
 use uuid::uuid;
 use crate::constants::{DEFAULT_KEYSTORE_DKLEN, DEFAULT_KEYSTORE_N, DEFAULT_KEYSTORE_P, DEFAULT_KEYSTORE_R};
 use crate::accounts::generate_key::generate_key;
+use keccak_hash::{H256, keccak};
 
 #[derive(Debug)]
 struct Aes128Ctr {
@@ -35,12 +38,19 @@ impl Aes128Ctr {
 
 use crate::types::types::{PrivateKey, PublicKey};
 
-pub fn encrypt_key() -> Result<(String, String, String, String), Box<dyn std::error::Error>>  {
+pub fn encrypt_key() -> Result<(String, String, String, String, String), Box<dyn std::error::Error>>  {
     let (scrypt_key, salt) = scrypt_password()?;
     let (private_key, public_key) = generate_key();
 
     let (iv,ciphertext) =  aes_key(private_key, scrypt_key)?;
-    Ok((encode(iv), encode(ciphertext), encode(salt), encode(public_key)))
+
+    let mut combined_key = private_key[16..32].to_vec();
+    combined_key.extend_from_slice(&ciphertext);
+
+    let mac = keccak(combined_key);
+
+    // let mac = keccak256();
+    Ok((encode(iv), encode(ciphertext), encode(salt), encode(public_key), encode(mac)))
 }
 
 fn scrypt_password() -> Result<(Vec<u8>, [u8; 32]), Box<dyn std::error::Error>> {
