@@ -1,3 +1,4 @@
+use std::fs;
 use std::io::{Write};
 use std::fs::File;
 use serde::{Serialize, Deserialize};
@@ -42,6 +43,7 @@ pub fn generate_keystore() -> Result<(), Box<dyn std::error::Error>> {
 
 fn make_file(keystore: Keystore) -> std::io::Result<()> {
     let now = Utc::now();
+    fs::create_dir_all("keystore")?;
     let file_name = format!("keystore/UTC--{}--{}.txt", now.format("%Y-%m-%dT%H-%M-%S.%fZ"), keystore.address);
     let mut file = File::create(file_name)?;
 
@@ -52,15 +54,15 @@ fn make_file(keystore: Keystore) -> std::io::Result<()> {
     Ok(())
 }
 
-#[derive(Serialize, Deserialize)]
-struct Keystore {
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Keystore {
     version : u8,
     id : Uuid,
     address: String,
     crypto: Crypto
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 struct Crypto {
     cipher : String,
     cipherparams : Cipherparams,
@@ -70,12 +72,12 @@ struct Crypto {
     mac: String
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 struct Cipherparams {
     iv :String
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 struct Kdfparams {
     dklen: usize,                      // Derived Key Length의 약자입니다. 결과값의 길이(byte)가 됩니다. 32여야함.
     salt: String,                   // 32byte의 랜덤값.
