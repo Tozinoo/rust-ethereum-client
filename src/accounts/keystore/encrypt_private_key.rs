@@ -1,4 +1,3 @@
-use std::io::{self, Write};
 use scrypt::{scrypt, Params};
 use crate::types::types::{PrivateKey};
 
@@ -13,29 +12,29 @@ use rand::{RngCore, thread_rng};
 use crate::constants::{DEFAULT_KEYSTORE_DKLEN, DEFAULT_KEYSTORE_N, DEFAULT_KEYSTORE_P, DEFAULT_KEYSTORE_R};
 use crate::accounts::generate_key::generate_key;
 use keccak_hash::{ keccak};
+use crate::accounts::keystore::keystores::input_password;
 
 #[derive(Debug)]
-struct Aes128Ctr {
+pub struct Aes128Ctr {
     inner: ctr::CtrCore<Aes128, ctr::flavors::Ctr128BE>,
 }
 
 impl Aes128Ctr {
-    fn new(key: &[u8], iv: &[u8]) -> Result<Self, cipher::InvalidLength> {
+    pub(crate) fn new(key: &[u8], iv: &[u8]) -> Result<Self, cipher::InvalidLength> {
         let cipher = aes::Aes128::new_from_slice(key).unwrap();
         let inner = ctr::CtrCore::inner_iv_slice_init(cipher, iv).unwrap();
         Ok(Self { inner })
     }
 
-    fn apply_keystream(self, buf: &mut [u8]) {
+    pub(crate) fn apply_keystream(self, buf: &mut [u8]) {
         self.inner.apply_keystream_partial(buf.into());
     }
 }
 
-
-
 pub fn encrypt_key() -> Result<(String, String, String, String, String), Box<dyn std::error::Error>>  {
     let (scrypt_key, salt) = scrypt_password()?;
     let (private_key, public_key) = generate_key();
+    println!("{:?}", encode(private_key));
 
     let (iv,ciphertext) =  aes_key(private_key, scrypt_key)?;
 
@@ -57,23 +56,14 @@ fn scrypt_password() -> Result<(Vec<u8>, [u8; 32]), Box<dyn std::error::Error>> 
     thread_rng().fill_bytes(&mut salt);
 
     let scrypt_params = Params::new(DEFAULT_KEYSTORE_N,DEFAULT_KEYSTORE_P,DEFAULT_KEYSTORE_R, DEFAULT_KEYSTORE_DKLEN)?;
+
     scrypt(password.as_ref(), &salt, &scrypt_params, key.as_mut_slice())?;
+    println!("scrypt!! {:?}", encode(&key));
 
     Ok((key, salt))
 }
 
-fn input_password() -> String {
-    print!("Please enter any key to generate a private key : "); //
-    io::stdout().flush().expect("Failed to flush stdout."); //
 
-    let mut password = String::new();
-
-    io::stdin()
-        .read_line(&mut password)
-        .expect("Failed to read input....");
-
-    password.trim().to_string()
-}
 
 fn aes_key(private_key: PrivateKey, scrypt_key: Vec<u8>)-> Result<(Vec<u8>,Vec<u8>), Box<dyn std::error::Error>> {
     let mut iv = vec![0u8; 16];
