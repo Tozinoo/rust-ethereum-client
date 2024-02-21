@@ -34,11 +34,10 @@ impl Aes128Ctr {
 pub fn encrypt_key() -> Result<(String, String, String, String, String), Box<dyn std::error::Error>>  {
     let (scrypt_key, salt) = scrypt_password()?;
     let (private_key, public_key) = generate_key();
-    println!("{:?}", encode(private_key));
 
-    let (iv,ciphertext) =  aes_key(private_key, scrypt_key)?;
+    let (iv,ciphertext) =  aes_key(private_key, scrypt_key.clone())?;
 
-    let mut combined_key = private_key[16..32].to_vec();
+    let mut combined_key = scrypt_key[16..32].to_vec();
     combined_key.extend_from_slice(&ciphertext);
 
     let mac = keccak(combined_key);
@@ -51,14 +50,10 @@ fn scrypt_password() -> Result<(Vec<u8>, [u8; 32]), Box<dyn std::error::Error>> 
     let password = input_password();
 
     let mut key = vec![0u8; DEFAULT_KEYSTORE_DKLEN];
-
     let mut salt = [0u8; 32];
     thread_rng().fill_bytes(&mut salt);
-
-    let scrypt_params = Params::new(DEFAULT_KEYSTORE_N,DEFAULT_KEYSTORE_P,DEFAULT_KEYSTORE_R, DEFAULT_KEYSTORE_DKLEN)?;
-
+    let scrypt_params = Params::new(DEFAULT_KEYSTORE_N, DEFAULT_KEYSTORE_R, DEFAULT_KEYSTORE_P, DEFAULT_KEYSTORE_DKLEN)?;
     scrypt(password.as_ref(), &salt, &scrypt_params, key.as_mut_slice())?;
-    println!("scrypt!! {:?}", encode(&key));
 
     Ok((key, salt))
 }
@@ -69,7 +64,7 @@ fn aes_key(private_key: PrivateKey, scrypt_key: Vec<u8>)-> Result<(Vec<u8>,Vec<u
     let mut iv = vec![0u8; 16];
     thread_rng().fill_bytes(iv.as_mut_slice());
 
-    let encryptor = Aes128Ctr::new(&scrypt_key[..16], &iv);
+    let encryptor = Aes128Ctr::new(&scrypt_key[..16], &iv[..16]);
 
     match encryptor {
         Ok(encryptor) => {

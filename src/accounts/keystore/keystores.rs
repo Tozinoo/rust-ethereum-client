@@ -9,7 +9,7 @@ use chrono::Utc;
 use scrypt::{Params, scrypt};
 use uuid::Uuid;
 use keccak_hash::{ keccak};
-use hex::encode;
+use hex::{encode,decode};
 
 use crate::accounts::keystore::encrypt_private_key::{Aes128Ctr, encrypt_key};
 use crate::constants::{DEFAULT_KEYSTORE_VERSION, DEFAULT_KEYSTORE_CIPHER, DEFAULT_KEYSTORE_DKLEN, DEFAULT_KEYSTORE_KDF, DEFAULT_KEYSTORE_N, DEFAULT_KEYSTORE_P, DEFAULT_KEYSTORE_R};
@@ -117,9 +117,8 @@ pub fn generate_keystore() -> Result<(), Box<dyn std::error::Error>> {
 
 pub fn decrypt_keystore_file(path : &Path) -> Result<Vec<u8>, Box<dyn Error>> {
     if let Ok(keystore) = read_file(path) {
-        println!("1");
         let password = input_password();
-        let key = match keystore.crypto.kdfparams {
+        let scrypt_key = match keystore.crypto.kdfparams {
             crate::accounts::keystore::keystores::Kdfparams {
                 dklen,
                 n,
@@ -127,34 +126,31 @@ pub fn decrypt_keystore_file(path : &Path) -> Result<Vec<u8>, Box<dyn Error>> {
                 r,
                 salt,
             } => {
-                println!("??? {}, {}, {}, {}, {}",dklen,n,p,r,salt);
-                let mut key = vec![0u8; dklen];
+                let mut scrypt_key = vec![0u8; dklen];
                 let log_n = (n as f32).log2().ceil() as u8;
-                println!("??? {}", log_n);
+                let salt = hex::decode(&salt).expect("Decoding failed");
+
                 let scrypt_params = Params::new(log_n, r, p, dklen)?;
-                scrypt(password.as_ref(), (&salt).as_ref(), &scrypt_params, key.as_mut_slice())?;
-                key
+
+                scrypt(password.as_ref(), &salt, &scrypt_params, scrypt_key.as_mut_slice())?;
+                scrypt_key
             }
         };
-        println!("2 {:?}" , encode(&key));
         // Derive the MAC from the derived key and ciphertext.
-        let mut combined_key = key[16..32].to_vec();
-        combined_key.extend_from_slice((&keystore.crypto.ciphertext).as_ref());
-        println!("3");
+        let mut combined_key = scrypt_key[16..32].to_vec();
+        let mut ciphertext = hex::decode(&keystore.crypto.ciphertext).expect("Decoding failed");
+        combined_key.append(&mut ciphertext);
         let derived_mac = keccak(combined_key);
-        println!("4");
-        // if derived_mac.as_bytes() != keystore.crypto.mac.as_bytes() {
-        //     return Err(Box::<dyn std::error::Error>::from("InvalidLength"));
-        // }
-        println!("5 {:?}",&keystore.crypto.cipherparams.iv.as_bytes()[..16]);
+        if encode(derived_mac) != keystore.crypto.mac {
+            return Err(Box::<dyn std::error::Error>::from("InvalidLength"));
+        }
+        let mut iv:[u8;16] = [0;16];
+        hex::decode_to_slice(&keystore.crypto.cipherparams.iv,&mut iv).expect("Decoding failed");
         // Decrypt the private key bytes using AES-128-CTR
         let decryptor =
-            Aes128Ctr::new(&key[..16], &keystore.crypto.cipherparams.iv.as_bytes()[..16]).expect("invalid length");
-        println!("6");
-        let mut pk = keystore.crypto.ciphertext.as_bytes().to_vec();
+            Aes128Ctr::new(&scrypt_key[..16], &iv[..16]).expect("invalid length");
+        let mut pk = decode(keystore.crypto.ciphertext).expect("Decoding failed");
         decryptor.apply_keystream(&mut pk);
-        println!("7");
-        println!("{:?}",encode(&pk));
         Ok(pk)
 
 
